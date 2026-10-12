@@ -1,5 +1,7 @@
 # NSUT Connect
 
+The Android/iOS **Expo mobile app** is in [mobile/](mobile/). See [mobile setup, offline storage, OAuth and push instructions](docs/MOBILE.md). The responsive web community demo and Express/PostgreSQL backend remain at the repository root.
+
 Source in this repository is based on Pranay-learn/Crosslinks_Task at tree 5cea627d7aa6d8761e6ae596e12d03f24c8936f5. Crosslinks_Task remains unchanged. Deployment and native mobile additions are managed in Crosslinks_APPtask.
 
 A responsive student community platform for NSUT, built with React, Vite, TypeScript, Tailwind CSS, React Router, Lucide, and Framer Motion. Express, PostgreSQL, and Prisma back the default full-stack application.

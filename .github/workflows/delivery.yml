@@ -60,6 +60,9 @@ jobs:
             cp -R mobile/dist dist/native
           fi
           node scripts/build-offline.mjs
+      - name: Verify Expo mobile UI and offline restart in a mobile browser
+        if: hashFiles('mobile/package.json') != ''
+        run: npx playwright test --config playwright.native.config.ts
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:

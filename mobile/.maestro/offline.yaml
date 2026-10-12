@@ -1,0 +1,15 @@
+appId: in.ac.nsut.connect
+---
+- launchApp:
+    clearState: true
+- tapOn: "Enter student demo"
+- tapOn: "Maybe later"
+- tapOn: "Timetable"
+- assertVisible: "Data Structures.*"
+- stopApp
+- setAirplaneMode: true
+- launchApp
+- tapOn: "Timetable"
+- assertVisible: "Data Structures.*"
+- setAirplaneMode: false
+- tapOn: "Refresh timetable"

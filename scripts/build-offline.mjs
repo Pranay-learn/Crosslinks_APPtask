@@ -8,7 +8,7 @@ await writeFile(resolve(root,'sw.js'),`const CACHE=${JSON.stringify(cache)},ROOT
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('nsut-static-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||!u.pathname.startsWith(ROOT)||u.pathname.includes('/api/')||e.request.headers.has('Authorization'))return;
-if(e.request.mode==='navigate')e.respondWith(fetch(e.request).catch(()=>caches.match(ROOT+'index.html')));
+if(e.request.mode==='navigate')e.respondWith(fetch(e.request).catch(()=>caches.match(u.pathname.startsWith(ROOT+'native/')?ROOT+'native/index.html':ROOT+'index.html')));
 else e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
 `);
 await writeFile(resolve(root,'.nojekyll'),'');
