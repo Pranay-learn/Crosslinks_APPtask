@@ -12,10 +12,10 @@ test('Expo app supports discussions, replies and profile bookmarks',async({page}
  await expect(page.getByRole('button',{name:'Admin dashboard',exact:true})).toHaveCount(0);
 });
 test('Expo timetable survives closing and reopening a page offline',async({page,context})=>{
- await login(page);await tab(page,'Timetable');await expect(page.getByText(/Downloaded • Last sync/)).toBeVisible();
- const subjects=await page.getByText(/Data Structures/).allTextContents();expect(subjects.length).toBeGreaterThan(0);
+ await login(page);await tab(page,'Timetable');await page.getByRole('button',{name:'Filter Mon',exact:true}).click();await expect(page.getByText(/Downloaded • Last sync/)).toBeVisible();
+ const subjects=await page.getByText(/Design & Analysis of Algorithms/).allTextContents();expect(subjects.length).toBeGreaterThan(0);
  await expect.poll(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null)).toBe(true);
- await context.setOffline(true);await page.close();const reopened=await context.newPage();await reopened.goto('./');await tab(reopened,'Timetable');await expect(reopened.getByText(/Offline • Last sync/)).toBeVisible();await expect(reopened.getByText(/Data Structures/).first()).toBeVisible();
+ await context.setOffline(true);await page.close();const reopened=await context.newPage();await reopened.goto('./');await tab(reopened,'Timetable');await reopened.getByRole('button',{name:'Filter Mon',exact:true}).click();await expect(reopened.getByText(/Offline • Last sync/)).toBeVisible();await expect(reopened.getByText(/Design & Analysis of Algorithms/).first()).toBeVisible();
  await context.setOffline(false);await expect(reopened.getByRole('button',{name:'Refresh timetable',exact:true})).toBeEnabled();await reopened.getByRole('button',{name:'Refresh timetable',exact:true}).click();await expect(reopened.getByText(/Downloaded • Last sync/)).toBeVisible();
 });
 test('Expo demo admin can publish a notice visible to the student role',async({page})=>{

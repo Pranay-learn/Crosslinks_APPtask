@@ -5,11 +5,13 @@ appId: in.ac.nsut.connect
 - tapOn: "Enter student demo"
 - tapOn: "Maybe later"
 - tapOn: "Timetable"
-- assertVisible: "Data Structures.*"
+- tapOn: "Filter Mon"
+- assertVisible: "Design & Analysis of Algorithms"
 - stopApp
 - setAirplaneMode: true
 - launchApp
 - tapOn: "Timetable"
-- assertVisible: "Data Structures.*"
+- tapOn: "Filter Mon"
+- assertVisible: "Design & Analysis of Algorithms"
 - setAirplaneMode: false
 - tapOn: "Refresh timetable"

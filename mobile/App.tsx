@@ -24,7 +24,7 @@ WebBrowser.maybeCompleteAuthSession();
 if(typeof globalThis.structuredClone!=='function')globalThis.structuredClone=(value:any)=>JSON.parse(JSON.stringify(value));
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:{randomUUID:Crypto.randomUUID}});
 else if(!globalThis.crypto.randomUUID)Object.defineProperty(globalThis.crypto,'randomUUID',{value:Crypto.randomUUID});
-const client=new QueryClient({defaultOptions:{queries:{retry:1,staleTime:10000}}}),Tabs=createBottomTabNavigator(),nav=createNavigationContainerRef<any>();
+const client=new QueryClient({defaultOptions:{queries:{retry:1,staleTime:10000,networkMode:DEMO?'always':'online'}}}),Tabs=createBottomTabNavigator(),nav=createNavigationContainerRef<any>();
 const empty:Snapshot={users:[],posts:[],comments:[],discussions:[],replies:[],announcements:[],timetable:[],events:[],notifications:[],auditLogs:[]};
 const light={bg:'#f4f6fb',card:'#ffffff',text:'#182644',muted:'#78869c',line:'#e3e8f1',blue:'#4567eb',soft:'#edf1ff'},dark={bg:'#10182c',card:'#1b2843',text:'#edf3ff',muted:'#a2b0c8',line:'#30405c',blue:'#91a5ff',soft:'#293958'};
 type C={user:User;data:Snapshot;p:typeof light;offline:boolean;guest:boolean;run:(fn:()=>Promise<unknown>,message?:string)=>Promise<boolean>;act:(name:ActionName,input:Input)=>Promise<boolean>;edit:(kind:string,input?:Input)=>void;open:(link:string)=>void;logout:()=>Promise<void>;toast:(text:string)=>void;themeToggle:()=>void;isDark:boolean};

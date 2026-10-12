@@ -5,7 +5,7 @@ import type {Snapshot,User,ActionName,Input,TimetableEntry} from '../../shared/m
 import {defaultPreferences,type Preferences,type CachedTimetable} from '../../shared/mobile';
 import {session} from './storage';
 export const DEMO=process.env.EXPO_PUBLIC_DEMO_MODE!=='false',API=(process.env.EXPO_PUBLIC_API_URL||'http://localhost:3001').replace(/\/$/,'');
-interface Local{snapshot:Snapshot;userId:string|null;bookmarks:string[];reports:{id:string;type:string;targetId:string;reason:string;resolved:boolean}[];votes:Record<string,string[]>;preferences:Preferences;}
+interface Local{versions?:Record<string,{signature:string;version:number}>;snapshot:Snapshot;userId:string|null;bookmarks:string[];reports:{id:string;type:string;targetId:string;reason:string;resolved:boolean}[];votes:Record<string,string[]>;preferences:Preferences;}
 let local:Local|null=null,queue=Promise.resolve();
 export class ApiError extends Error{constructor(message:string,public status:number){super(message);}}
 export async function request<T>(path:string,method='GET',body?:unknown):Promise<T>{
@@ -51,9 +51,13 @@ export const api={
  },
  async timetable(branch:string,semester:number,section:string):Promise<CachedTimetable>{
   if(!DEMO)return request('/mobile/timetable/sync?'+new URLSearchParams({branch,semester:String(semester),section}));
-  const entries=(await state()).snapshot.timetable.filter(e=>e.branch===branch&&e.semester===semester&&e.section===section);
-  if(!entries.length)throw new ApiError('No timetable for this selection. Demo: CSE / semester 5 / section A.',404);
-  return {branch,semester,section,entries,version:1,syncedAt:new Date().toISOString(),timezone:'Asia/Kolkata'};
+  return change(s=>{
+   const entries=s.snapshot.timetable.filter(e=>e.branch===branch&&e.semester===semester&&e.section===section),key=branch+':'+semester+':'+section;
+   s.versions??={};const old=s.versions[key],signature=JSON.stringify(entries);
+   if(!entries.length&&!old)throw new ApiError('No timetable for this selection. Demo: CSE / semester 5 / section A.',404);
+   const version=old?.signature===signature?old.version:(old?.version??0)+1;s.versions[key]={signature,version};
+   return {branch,semester,section,entries,version,syncedAt:new Date().toISOString(),timezone:'Asia/Kolkata'};
+  });
  },
  async preferences():Promise<Preferences>{return DEMO?(await state()).preferences:request('/mobile/preferences');},
  async preferencesSave(value:Preferences){await AsyncStorage.setItem('nsut-preferences',JSON.stringify(value));return DEMO?change(s=>{s.preferences=value;}):request('/mobile/preferences','PUT',value);},
