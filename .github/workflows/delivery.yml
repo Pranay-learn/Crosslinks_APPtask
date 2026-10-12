@@ -1,0 +1,94 @@
+name: Verify and deploy NSUT Connect
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: nsut-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: nsut_connect_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres -d nsut_connect_test" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:ci_only_password@localhost:5432/nsut_connect
+      TEST_DATABASE_URL: postgresql://postgres:ci_only_password@localhost:5432/nsut_connect_test
+      VITE_APP_MODE: demo
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run test:live
+      - name: Native application dependency install and typecheck
+        if: hashFiles('mobile/package.json') != ''
+        run: |
+          npm install --prefix mobile
+          npm run typecheck --prefix mobile
+          npm run export:web --prefix mobile
+      - name: Build deployable browser demonstration
+        env:
+          VITE_BASE_PATH: /Crosslinks_APPtask/
+          VITE_GITHUB_PAGES: "true"
+        run: |
+          npm run build
+          node scripts/build-offline.mjs
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: dist
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-evidence
+          path: test-results
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure requested GitHub Pages deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            try { await github.request('GET /repos/{owner}/{repo}/pages',{owner,repo}); }
+            catch(error) {
+              if(error.status!==404) throw error;
+              await github.request('POST /repos/{owner}/{repo}/pages',{owner,repo,build_type:'workflow'});
+            }
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Verify published URL
+        env:
+          DEMO_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          curl --fail --retry 6 --retry-all-errors --retry-delay 10 "$DEMO_URL" -o /tmp/nsut-demo.html
+          test -s /tmp/nsut-demo.html
+          echo "Live demo verified: $DEMO_URL"
