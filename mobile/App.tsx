@@ -131,6 +131,7 @@ function GoogleLogin({login}:{login:(u:User)=>void}){
 function Root(){
  const [user,setUser]=useState<User|null>(null),[guest,setGuest]=useState(false),[offline,setOffline]=useState(false),[darkMode,setDark]=useState(useColorScheme()==='dark'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[editor,setEditor]=useState<{kind:string;input?:Input}|null>(null),[detail,setDetail]=useState<string|null>(null),[center,setCenter]=useState(false),[search,setSearch]=useState(false),[query,setQuery]=useState(''),[notice,setNotice]=useState(''),[offer,setOffer]=useState(false),[cached,setCached]=useState(false);
  const p=darkMode?dark:light,handled=useRef(new Set<string>());
+ const disconnected=(s:{isConnected:boolean|null;isInternetReachable:boolean|null})=>Platform.OS==='web'?!navigator.onLine:s.isConnected===false||s.isInternetReachable===false;
  const snapshot=useQuery({queryKey:['snapshot',user?.id],queryFn:api.snapshot,enabled:!!user&&!guest,refetchInterval:20000});
  const data=snapshot.data??empty;
  useEffect(()=>{if(snapshot.error instanceof ApiError&&snapshot.error.status===401){void session.clear();setUser(null);setGuest(false);client.clear();setNotice('Your session expired. Please sign in again.');void AsyncStorage.getItem('nsut-selection').then(async raw=>{if(raw){const selected=JSON.parse(raw);setCached(!!await timetableCache.read(cacheKey(selected.branch,selected.semester,selected.section)));}});}},[snapshot.error]);
@@ -144,11 +145,11 @@ function Root(){
   try{
    const theme=await AsyncStorage.getItem('nsut-native-theme');if(theme)setDark(theme==='dark');
    const selected=JSON.parse(await AsyncStorage.getItem('nsut-selection')??'null'),saved=selected?await timetableCache.read(cacheKey(selected.branch,selected.semester,selected.section)):null;setCached(!!saved);
-   const state=await NetInfo.fetch(),off=state.isConnected===false||state.isInternetReachable===false;setOffline(off);
+   const state=await NetInfo.fetch(),off=disconnected(state);setOffline(off);
    if(!DEMO&&off&&saved)openOffline();else try{setUser(await api.restore());}catch(e){if(saved)openOffline();else setError(e instanceof Error?e.message:'Unable to connect.');}
   }finally{setLoading(false);}
  }
- useEffect(()=>{void boot();return NetInfo.addEventListener(s=>{const off=s.isConnected===false||s.isInternetReachable===false;setOffline(off);if(!off)void client.invalidateQueries();});},[]);
+ useEffect(()=>{void boot();return NetInfo.addEventListener(s=>{const off=disconnected(s);setOffline(off);if(!off)void client.invalidateQueries();});},[]);
  useEffect(()=>{if(!offline&&guest&&!DEMO)void session.read().then(s=>{if(s)void api.restore().then(u=>{if(u){setUser(u);setGuest(false);}}).catch(()=>{});});},[offline,guest]);
  useEffect(()=>{if(snapshot.data&&user){const u=snapshot.data.users.find(u=>u.id===user.id);if(u)setUser(u);}},[snapshot.data]);
  useEffect(()=>{if(Platform.OS==='web'&&'serviceWorker' in navigator){const base=(process.env.EXPO_PUBLIC_BASE_PATH||'').replace(/\/native$/,'');void navigator.serviceWorker.register(base+'/sw.js').catch(()=>{});}},[]);
