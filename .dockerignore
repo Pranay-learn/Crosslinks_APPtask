@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+.git
+.env
+.env.*
+mobile
+work
+test-results
+.local
+credentials

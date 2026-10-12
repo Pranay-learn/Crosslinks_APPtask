@@ -15,3 +15,16 @@ Required backend settings: DATABASE_URL, CLIENT_ORIGIN, API_ORIGIN, GOOGLE_CLIEN
 The OAuth callback must be registered exactly with Google. Native custom return schemes are allowlisted by the backend. Keep all secrets in the hosting secret store, not the mobile bundle or GitHub.
 
 For staging, seed fictional content only with explicit SEED_DEMO_DATA=true. Back up the production database, preserve migrations, monitor worker failures/exhausted deliveries and retain audit history according to university policy.
+
+Container API/worker option:
+
+```sh
+docker build -t nsut-connect-api .
+# Apply migrations as a release job using the same protected runtime environment.
+docker run --rm --env-file .env nsut-connect-api npm run db:migrate
+# Put the API behind a configured HTTPS proxy; the host port below stays loopback-only.
+docker run --env-file .env -p 127.0.0.1:3001:3001 nsut-connect-api
+docker run --env-file .env nsut-connect-api npm run start:worker
+```
+
+The container definition is a deployment option. A Docker build is not established by TypeScript/browser CI alone and needs validation on the selected hosting service. PostgreSQL is provisioned separately.
