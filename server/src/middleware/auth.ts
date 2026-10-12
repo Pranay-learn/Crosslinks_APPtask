@@ -16,7 +16,7 @@ export function authenticated(req: Request) {
 }
 export function requireAuth(db: PrismaClient): RequestHandler {
   return async (req, _res, next) => {
-    const token: unknown = req.cookies?.[sessionCookie];
+    const token: unknown = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : req.cookies?.[sessionCookie];
     if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token))
       throw new HttpError(401, "Sign in with your NSUT account to continue.");
     const session = await db.session.findUnique({

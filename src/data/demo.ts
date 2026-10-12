@@ -5,6 +5,8 @@ export const categories = [
   "General",
   "Academics",
   "Placements",
+  "Internships",
+  "Campus Life",
   "Events",
   "Clubs",
   "Lost & Found",

@@ -98,7 +98,7 @@ export async function provisionGoogleUser(
         data: {
           googleId: identity.googleId,
           email: identity.email,
-          ...(trustedAdmin ? { role: "ADMIN" } : {}),
+          role: trustedAdmin ? "ADMIN" : "STUDENT",
         },
       });
     return tx.user.create({

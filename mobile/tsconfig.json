@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../shared/model.ts",
+    "../src/data/demo.ts",
+    "../src/lib/domain.ts",
+    "../src/lib/events.ts"
+  ]
+}

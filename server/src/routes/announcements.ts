@@ -88,7 +88,7 @@ export function announcementRoutes(db: PrismaClient) {
           await tx.notification.createMany({
             data: recipients.map((recipient) => ({
               userId: recipient.id,
-              text: `Campus announcement: ${created.title}`,
+              text: `${created.priority === "URGENT" ? "Urgent campus announcement" : "Campus announcement"}: ${created.title}`,
               link: `/announcements/${created.id}`,
             })),
           });
@@ -127,7 +127,7 @@ export function announcementRoutes(db: PrismaClient) {
           await tx.notification.createMany({
             data: recipients.map((recipient) => ({
               userId: recipient.id,
-              text: `Announcement updated: ${updated.title}`,
+              text: `${updated.priority === "URGENT" ? "Urgent announcement updated" : "Announcement updated"}: ${updated.title}`,
               link: `/announcements/${updated.id}`,
             })),
           });

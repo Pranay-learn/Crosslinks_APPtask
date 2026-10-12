@@ -4,6 +4,7 @@ const str = (v: Input, key: string) => String(v[key] ?? "").trim();
 const id = () => crypto.randomUUID();
 export function safeUrl(value: string): boolean {
   if (!value) return true;
+  if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return value.length <= 700000;
   try {
     return new URL(value).protocol === "https:";
   } catch {

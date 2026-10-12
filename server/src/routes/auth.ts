@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { Router } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { CodeChallengeMethod, OAuth2Client } from "google-auth-library";
@@ -47,6 +48,29 @@ export function authRoutes(db: PrismaClient, config: ServerConfig) {
         configured: googleSignInConfigured(config),
       },
     });
+  });
+  router.get("/mobile", async (req,res)=>{
+    configured();
+    const v=z.object({redirect_uri:z.string(),state:z.string().min(1).max(200),code_challenge:z.string().min(43).max(128),code_challenge_method:z.literal("S256")}).parse(req.query);
+    const allowed=(process.env.MOBILE_REDIRECT_URIS||"nsutconnect://auth").split(",").map(x=>x.trim());
+    if(!allowed.includes(v.redirect_uri))throw new HttpError(400,"Mobile redirect is not configured.");
+    const state=opaqueToken(),nonce=opaqueToken(),codeVerifier=opaqueToken();
+    await db.oAuthState.create({data:{stateHash:hashToken(state),nonce,codeVerifier,mobileRedirect:v.redirect_uri,mobileState:v.state,mobileChallenge:v.code_challenge,expiresAt:new Date(Date.now()+600000)}});
+    res.cookie(oauthCookie,state,{...cookieOptions,maxAge:600000});
+    res.redirect(oauth.generateAuthUrl({scope:["openid","email","profile"],state,nonce,hd:"nsut.ac.in",prompt:"select_account",code_challenge:createHash("sha256").update(codeVerifier).digest("base64url"),code_challenge_method:CodeChallengeMethod.S256}));
+  });
+  router.post("/mobile/exchange",async(req,res)=>{
+    const v=z.object({code:z.string().min(43).max(100),codeVerifier:z.string().min(43).max(128)}).strict().parse(req.body);
+    const hash=hashToken(v.code);
+    const account=await db.$transaction(async tx=>{
+      const handoff=await tx.mobileLogin.findUnique({where:{codeHash:hash},include:{user:true}});
+      if(!handoff||handoff.expiresAt<=new Date()||handoff.user.status!=="ACTIVE"||!sameToken(handoff.challenge,createHash("sha256").update(v.codeVerifier).digest("base64url")))throw new HttpError(401,"Restart Google sign-in.");
+      if((await tx.mobileLogin.deleteMany({where:{codeHash:hash}})).count!==1)throw new HttpError(401,"Google sign-in was already used.");
+      return handoff.user;
+    });
+    const session=await createSession(db,account.id);
+    res.setHeader("Cache-Control","no-store");
+    res.json({data:{token:session.token,csrfToken:session.csrfToken,user:user(account,account.id)}});
   });
   router.get("/google", async (req, res) => {
     configured();
@@ -152,6 +176,12 @@ export function authRoutes(db: PrismaClient, config: ServerConfig) {
       );
     }
     const account = await provisionGoogleUser(db, identity, config.adminEmails);
+    if(saved.mobileRedirect&&saved.mobileChallenge&&saved.mobileState){
+      const code=opaqueToken();
+      await db.mobileLogin.create({data:{codeHash:hashToken(code),userId:account.id,challenge:saved.mobileChallenge,expiresAt:new Date(Date.now()+60000)}});
+      const destination=new URL(saved.mobileRedirect);destination.searchParams.set("code",code);destination.searchParams.set("state",saved.mobileState);
+      res.setHeader("Cache-Control","no-store");res.redirect(destination.href);return;
+    }
     // Rotate any preexisting session during authentication, preventing session fixation.
     const oldToken: unknown = req.cookies?.[sessionCookie];
     if (typeof oldToken === "string")
@@ -181,6 +211,7 @@ export function authRoutes(db: PrismaClient, config: ServerConfig) {
     csrfProtection(config),
     async (req, res) => {
       await db.session.delete({ where: { id: authenticated(req).session.id } });
+      if(typeof req.body?.deviceId==="string")await db.pushDevice.updateMany({where:{id:req.body.deviceId,userId:authenticated(req).user.id},data:{enabled:false}});
       res.clearCookie(sessionCookie, cookieOptions);
       res.json({ data: { success: true } });
     },

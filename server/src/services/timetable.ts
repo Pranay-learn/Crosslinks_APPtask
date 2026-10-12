@@ -64,6 +64,8 @@ export async function saveTimetable(
           targetId: row.id,
         },
       });
+      const students=await tx.user.findMany({where:{status:"ACTIVE",branch:input.branch,semester:input.semester,section:input.section},select:{id:true}});
+      await tx.notification.createMany({data:students.map(u=>({userId:u.id,text:"Your timetable was updated. Refresh your saved schedule.",link:"/timetable"}))});
       return row;
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },

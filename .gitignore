@@ -10,3 +10,9 @@ coverage/
 *.log
 .local/
 .vercel/
+
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env
+credentials/

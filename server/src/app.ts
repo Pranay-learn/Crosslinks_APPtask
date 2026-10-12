@@ -20,6 +20,7 @@ import { userRoutes } from "./routes/users.js";
 import { notificationRoutes } from "./routes/notifications.js";
 import { adminRoutes } from "./routes/admin.js";
 import { platformRoutes } from "./routes/platform.js";
+import { mobileRoutes } from "./routes/mobile.js";
 import { eventRoutes } from "./routes/events.js";
 
 export function createApp({
@@ -50,7 +51,7 @@ export function createApp({
       },
     }),
   );
-  app.use(express.json({ limit: "100kb" }));
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
   app.get("/api/health", async (_req, res) => {
     try {
@@ -106,6 +107,7 @@ export function createApp({
       message: { error: "Too many updates. Please wait a moment." },
     }),
   );
+  app.use("/api/mobile", mobileRoutes(db));
   app.use("/api/users", userRoutes(db));
   app.use("/api/posts", postRoutes(db));
   app.use("/api/discussions", discussionRoutes(db));

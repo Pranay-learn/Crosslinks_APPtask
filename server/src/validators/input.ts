@@ -16,6 +16,7 @@ const text = (max: number) =>
     );
 export const httpsImage = z.union([
   z.literal(""),
+  z.string().max(700000).regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/),
   z
     .url()
     .max(2048)
@@ -28,6 +29,8 @@ export const categories = [
   "General",
   "Academics",
   "Placements",
+  "Internships",
+  "Campus Life",
   "Events",
   "Clubs",
   "Lost & Found",
@@ -60,6 +63,8 @@ export const acceptedInput = z
 export const readInput = z.object({ read: z.boolean().default(true) }).strict();
 export const profileInput = z
   .object({
+    batch: z.number().int().min(2000).max(2100).optional(),
+    privateProfile: z.boolean().optional(),
     name: text(100).optional(),
     bio: z.string().trim().max(600).optional(),
     avatarUrl: httpsImage.optional(),
@@ -85,6 +90,7 @@ export const announcementInput = z
         "Examination",
         "Placement",
         "Events",
+        "Holidays",
         "Administration",
         "General",
       ])
@@ -99,6 +105,7 @@ const time = z
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a 24-hour HH:MM time");
 export const timetableInput = z
   .object({
+    cancelled: z.boolean().default(false),
     subject: text(100),
     code: text(30),
     faculty: text(100),

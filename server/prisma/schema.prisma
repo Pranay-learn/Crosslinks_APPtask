@@ -39,6 +39,14 @@ model User {
   avatarUrl    String        @default("")
   role         Role          @default(STUDENT)
   branch       String        @default("")
+  batch        Int @default(2025)
+  privateProfile Boolean @default(false)
+  mobileLogins MobileLogin[]
+  devices PushDevice[]
+  pushPreferences PushPreference?
+  replyVotes ReplyVote[]
+  discussionBookmarks DiscussionBookmark[]
+  reports ContentReport[]
   year         Int           @default(1)
   semester     Int           @default(1)
   section      String        @default("")
@@ -121,6 +129,7 @@ model Discussion {
   hidden          Boolean  @default(false)
   acceptedReplyId String?   @unique
   acceptedReply   DiscussionReply? @relation("AcceptedAnswer", fields: [acceptedReplyId], references: [id], onDelete: SetNull)
+  bookmarks DiscussionBookmark[]
   replies         DiscussionReply[] @relation("DiscussionReplies")
   votes           DiscussionVote[]
   createdAt       DateTime @default(now())
@@ -148,6 +157,7 @@ model DiscussionReply {
   parentId     String?
   parent       DiscussionReply? @relation("NestedReplies", fields: [parentId], references: [id], onDelete: Cascade)
   children     DiscussionReply[] @relation("NestedReplies")
+  upvotes ReplyVote[]
   acceptedBy   Discussion? @relation("AcceptedAnswer")
   createdAt    DateTime @default(now())
   @@index([discussionId, createdAt])
@@ -178,6 +188,7 @@ model AnnouncementRead {
   @@index([userId])
 }
 model TimetableEntry {
+  cancelled Boolean @default(false)
   id        String @id @default(cuid())
   subject   String
   code      String
@@ -195,6 +206,8 @@ model TimetableEntry {
   @@index([branch, semester, section, day, start])
 }
 model Notification {
+  dispatchedAt DateTime?
+  deliveries PushDelivery[]
   id        String @id @default(cuid())
   userId    String
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -226,6 +239,9 @@ model Session {
   @@index([expiresAt])
 }
 model OAuthState {
+  mobileRedirect String?
+  mobileChallenge String?
+  mobileState String?
   stateHash    String @id
   nonce        String
   codeVerifier String
@@ -266,4 +282,80 @@ model EventRsvp {
   createdAt DateTime @default(now())
   @@id([eventId, userId])
   @@index([userId])
+}
+
+model MobileLogin {
+ codeHash String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ challenge String
+ expiresAt DateTime
+ @@index([expiresAt])
+}
+model PushPreference {
+ userId String @id
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ settings Json
+}
+model PushDevice {
+ id String @id @default(cuid())
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ tokenHash String @unique
+ sealedToken String
+ enabled Boolean @default(true)
+ platform String
+ deliveries PushDelivery[]
+}
+model PushDelivery {
+ id String @id @default(cuid())
+ notificationId String
+ notification Notification @relation(fields:[notificationId],references:[id],onDelete:Cascade)
+ deviceId String
+ device PushDevice @relation(fields:[deviceId],references:[id],onDelete:Cascade)
+ attempts Int @default(0)
+ availableAt DateTime @default(now())
+ leasedAt DateTime?
+ deliveredAt DateTime?
+ receiptId String?
+ error String?
+ @@unique([notificationId,deviceId])
+ @@index([deliveredAt,availableAt])
+}
+model TimetableSnapshot {
+ id String @id @default(cuid())
+ branch String
+ semester Int
+ section String
+ version Int
+ hash String
+ snapshot Json
+ createdAt DateTime @default(now())
+ @@unique([branch,semester,section,version])
+}
+model ReplyVote {
+ replyId String
+ userId String
+ reply DiscussionReply @relation(fields:[replyId],references:[id],onDelete:Cascade)
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ @@id([replyId,userId])
+}
+model DiscussionBookmark {
+ discussionId String
+ userId String
+ discussion Discussion @relation(fields:[discussionId],references:[id],onDelete:Cascade)
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ @@id([discussionId,userId])
+}
+model ContentReport {
+ id String @id @default(cuid())
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ targetId String
+ type String
+ reason String
+ resolved Boolean @default(false)
+ createdAt DateTime @default(now())
+ @@unique([userId,targetId,type])
+ @@index([resolved,createdAt])
 }

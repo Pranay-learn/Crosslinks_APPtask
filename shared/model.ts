@@ -1,12 +1,14 @@
 export type Role = "STUDENT" | "ADMIN";
 export type Category =
-  "General" | "Academics" | "Placements" | "Events" | "Clubs" | "Lost & Found";
+  "General" | "Academics" | "Placements" | "Internships" | "Campus Life" | "Events" | "Clubs" | "Lost & Found";
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
   branch: string;
+  batch?: number;
+  privateProfile?: boolean;
   year: number;
   semester: number;
   section: string;
@@ -67,6 +69,7 @@ export interface Announcement {
   createdAt: string;
 }
 export interface TimetableEntry {
+  cancelled?: boolean;
   id: string;
   subject: string;
   code: string;

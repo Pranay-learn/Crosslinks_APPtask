@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run db:generate
       - run: npm run typecheck
       - run: npm test
@@ -46,12 +46,19 @@ jobs:
           npm install --prefix mobile
           npm run typecheck --prefix mobile
           npm run export:web --prefix mobile
+      - name: Emit public dependency lock metadata for review
+        run: |
+          node -e "const fs=require('fs'); console.log('NSUT_ROOT_LOCK:'+JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json','utf8')))); if(fs.existsSync('mobile/package-lock.json')) console.log('NSUT_MOBILE_LOCK:'+JSON.stringify(JSON.parse(fs.readFileSync('mobile/package-lock.json','utf8'))));"
       - name: Build deployable browser demonstration
         env:
           VITE_BASE_PATH: /Crosslinks_APPtask/
           VITE_GITHUB_PAGES: "true"
         run: |
           npm run build
+          if [ -f mobile/package.json ]; then
+            EXPO_PUBLIC_BASE_PATH=/Crosslinks_APPtask/native npm run export:web --prefix mobile
+            cp -R mobile/dist dist/native
+          fi
           node scripts/build-offline.mjs
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
