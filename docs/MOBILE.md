@@ -68,7 +68,7 @@ All /api/mobile routes require a session and use the existing CSRF policy. /admi
 - PATCH /api/mobile/admin/reports/:id with {hide:boolean}
 - POST /api/mobile/admin/notifications with {text,branch?,link}
 
-The native app shares backend feed/discussion/announcement/profile routes and polls current community data every 20 seconds. Timetable checks run every 45 seconds. For immediate campus-scale updates, add a shared streaming/event transport; polling currently provides periodic updates.
+The native app shares backend feed/discussion/announcement/profile routes and uses authenticated server-sent invalidations for community mutations, with 20-second polling for recovery and worker-generated notices. Timetable checks run every 45 seconds. Streaming invalidation is process-local; use a shared event bus when scaling to multiple API instances.
 
 ## Verification
 

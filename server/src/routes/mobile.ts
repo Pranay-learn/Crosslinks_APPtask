@@ -1,4 +1,5 @@
 import { Router } from "express";
+import {live} from "../live.js";
 import { createHash,createCipheriv,randomBytes } from "node:crypto";
 import { z } from "zod";
 import { Expo } from "expo-server-sdk";
@@ -13,6 +14,12 @@ const preferenceInput=z.object({announcement:z.boolean(),reply:z.boolean(),discu
 const selection=z.object({branch:z.string().min(1).max(80),semester:z.coerce.number().int().min(1).max(12),section:z.string().min(1).max(20)});
 export function mobileRoutes(db:PrismaClient){
  const r=Router();
+ r.get("/stream",(req,res)=>{
+  res.setHeader("Content-Type","text/event-stream");res.setHeader("Cache-Control","no-store");res.flushHeaders();
+  const changed=()=>res.write('data: {"type":"changed"}\n\n');live.on("changed",changed);res.write('data: {"type":"connected"}\n\n');
+  const heartbeat=setInterval(()=>res.write(": heartbeat\n\n"),20000),expiry=setTimeout(()=>res.end(),60000);
+  req.on("close",()=>{live.off("changed",changed);clearInterval(heartbeat);clearTimeout(expiry);});
+ });
  r.get("/preferences",async(req,res)=>{const row=await db.pushPreference.findUnique({where:{userId:authenticated(req).user.id}});res.json({data:{...defaults,...(row?.settings as object??{})}});});
  r.put("/preferences",async(req,res)=>{const settings=preferenceInput.parse(req.body),userId=authenticated(req).user.id;await db.pushPreference.upsert({where:{userId},create:{userId,settings},update:{settings}});res.json({data:settings});});
  r.post("/devices",async(req,res)=>{
@@ -30,9 +37,9 @@ export function mobileRoutes(db:PrismaClient){
   const snapshot=await db.$transaction(async tx=>{
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(672886144)`;
    const rows=await tx.timetableEntry.findMany({where:key,orderBy:[{day:"asc"},{start:"asc"},{id:"asc"}]});
-   if(!rows.length)throw new HttpError(404,"No timetable has been published for this selection.");
-   const entries=rows.map(timetable),hash=createHash("sha256").update(JSON.stringify(entries)).digest("hex");
    const latest=await tx.timetableSnapshot.findFirst({where:key,orderBy:{version:"desc"}});
+   if(!rows.length&&!latest)throw new HttpError(404,"No timetable has been published for this selection.");
+   const entries=rows.map(timetable),hash=createHash("sha256").update(JSON.stringify(entries)).digest("hex");
    if(latest?.hash===hash)return {entries,version:latest.version};
    const created=await tx.timetableSnapshot.create({data:{...key,hash,version:(latest?.version??0)+1,snapshot:JSON.parse(JSON.stringify(entries))}});
    return {entries,version:created.version};

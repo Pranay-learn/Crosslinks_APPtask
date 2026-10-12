@@ -47,7 +47,7 @@ describe.skipIf(!url)('Native mobile secure API contracts',()=>{
   expect((await request(app).get('/api/mobile/replies/'+replyId+'/votes').set(headers())).body.data).toEqual({count:1,voted:true});
  });
  it('creates timetable snapshots and advances versions after an admin update',async()=>{
-  const row=await db!.timetableEntry.create({data:{subject:'DSA',code:'CS201',faculty:'Dr Mobile',room:prefix,day:1,start:'09:00',end:'10:00',branch:prefix,semester:5,section:'A'}});timetableId=row.id;
+  const row=await db!.timetableEntry.create({data:{subject:'DSA',code:'CS201',faculty:'Dr Mobile',room:'AB-'+prefix.slice(-8),day:1,start:'09:00',end:'10:00',branch:prefix,semester:5,section:'A'}});timetableId=row.id;
   const path='/api/mobile/timetable/sync?branch='+prefix+'&semester=5&section=A';
   const first=(await request(app).get(path).set(headers()).expect(200)).body.data;expect(first.version).toBe(1);
   expect((await request(app).get(path).set(headers())).body.data.version).toBe(1);

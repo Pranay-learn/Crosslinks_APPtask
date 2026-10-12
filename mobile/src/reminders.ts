@@ -25,3 +25,10 @@ export function schedule(t:CachedTimetable|null,p:Preferences){
   for(const {entry,date} of candidates){ids.push(await Notifications.scheduleNotificationAsync({content:{title:entry.subject+' starts soon',body:p.reminderMinutes+' minutes • '+entry.room,data:{link:'/timetable'},sound:'default'},trigger:{type:Notifications.SchedulableTriggerInputTypes.DATE,date,channelId:'campus'}}));await AsyncStorage.setItem('nsut-reminders',JSON.stringify(ids));}
  });return queue;
 }
+
+export async function enableAndSchedule(){
+ const message=await enableNotifications();
+ const selection=JSON.parse(await AsyncStorage.getItem('nsut-selection')??'null');
+ if(selection){const {cacheKey,timetableCache}=await import('./storage');const {api}=await import('./api');await schedule(await timetableCache.read(cacheKey(selection.branch,selection.semester,selection.section)),await api.preferences());}
+ return message;
+}

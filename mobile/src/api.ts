@@ -66,3 +66,15 @@ export const api={
  async moderateReport(id:string,hide:boolean){if(!DEMO)return request('/mobile/admin/reports/'+id,'PATCH',{hide});return change(s=>{guard(s);const r=s.reports.find(r=>r.id===id)!;r.resolved=true;if(hide){if(r.type==='post')s.snapshot.posts.find(p=>p.id===r.targetId)!.hidden=true;else s.snapshot.discussions.find(d=>d.id===r.targetId)!.hidden=true;}s.snapshot.auditLogs.unshift({id:Date.now().toString(36),actorId:s.userId!,action:hide?'report.hide':'report.dismiss',targetId:r.targetId,createdAt:new Date().toISOString()});});},
  async notify(text:string,branch:string,link:string){if(!text||!/^\/(announcements|discussions|timetable)/.test(link))throw new Error('Add text and a valid campus content link.');if(!DEMO)return request('/mobile/admin/notifications','POST',{text,branch:branch||undefined,link});return change(s=>{guard(s);for(const u of s.snapshot.users.filter(u=>!branch||u.branch===branch))s.snapshot.notifications.unshift({id:Date.now().toString(36)+u.id,userId:u.id,text,link,read:false,createdAt:new Date().toISOString()});s.snapshot.auditLogs.unshift({id:Date.now().toString(36),actorId:s.userId!,action:'notification.targeted',targetId:link,createdAt:new Date().toISOString()});});}
 };
+
+export async function subscribe(signal:AbortSignal,onChange:()=>void){
+ if(DEMO)return;
+ const {fetch:streamFetch}=await import('expo/fetch');
+ while(!signal.aborted){
+  try{const value=await session.read();if(!value)return;const auth=JSON.parse(value);const response=await streamFetch(API+'/api/mobile/stream',{headers:{Authorization:'Bearer '+auth.token},signal});
+   if(!response.ok||!response.body)throw new Error('Stream unavailable');const reader=response.body.getReader();let buffer='';
+   while(!signal.aborted){const {done,value}=await reader.read();if(done)break;buffer+=new TextDecoder().decode(value);const chunks=buffer.split('\n\n');buffer=chunks.pop()!;for(const chunk of chunks)if(chunk.includes('"changed"'))onChange();}
+  }catch{if(signal.aborted)return;}
+  await new Promise<void>(resolve=>{const timer=setTimeout(resolve,5000);signal.addEventListener('abort',()=>{clearTimeout(timer);resolve();},{once:true});});
+ }
+}

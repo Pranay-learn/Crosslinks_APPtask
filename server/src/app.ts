@@ -1,4 +1,5 @@
 import express from "express";
+import {live} from "./live.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
@@ -107,6 +108,10 @@ export function createApp({
       message: { error: "Too many updates. Please wait a moment." },
     }),
   );
+  app.use("/api",(req,res,next)=>{
+    if(!["GET","HEAD","OPTIONS"].includes(req.method))res.on("finish",()=>{if(res.statusCode<400)live.emit("changed");});
+    next();
+  });
   app.use("/api/mobile", mobileRoutes(db));
   app.use("/api/users", userRoutes(db));
   app.use("/api/posts", postRoutes(db));
