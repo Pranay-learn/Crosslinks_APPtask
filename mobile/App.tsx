@@ -54,7 +54,7 @@ function Timetable(){
  const query=useQuery({queryKey:['timetable',selection],queryFn:()=>api.timetable(selection.branch,selection.semester,selection.section),enabled:ready&&!offline&&!guest,refetchInterval:45000});
  useEffect(()=>{if(query.data){setSaved(query.data);void timetableCache.write(query.data);void AsyncStorage.setItem('nsut-selection',JSON.stringify(selection));}},[query.data]);
  const t=query.data??saved,prefs=useQuery({queryKey:['preferences'],queryFn:api.preferences,enabled:!guest});
- useEffect(()=>{if(t&&prefs.data)void schedule(t,prefs.data).catch(()=>toast('Check device notification permission to enable reminders.'));},[t,prefs.data]);
+ useEffect(()=>{if(t&&prefs.data)void schedule(t,prefs.data).catch(()=>toast('Check device notification permission to enable reminders.'));},[t?.version,t?.branch,t?.semester,t?.section,prefs.data?.classReminder,prefs.data?.reminderMinutes]);
  useEffect(()=>{const sub=AppState.addEventListener('change',s=>{if(s==='active'){if(!offline&&!guest)void query.refetch();if(t&&prefs.data)void schedule(t,prefs.data).catch(()=>{});}});return()=>sub.remove();},[t,prefs.data,offline,guest]);
  const status=classStatus(t?.entries??[]);
  return <Page><Title>Your week, a little clearer.</Title><Sub>Download once. Open it even without an internet connection.</Sub><View style={{height:18}}/><Card><Text style={{color:p.text,fontWeight:'700',marginBottom:7}}>{selection.branch} • Semester {selection.semester} • Section {selection.section}</Text><Sub>{t?(offline||guest?'Offline • ':'Downloaded • ')+'Last sync '+new Date(t.syncedAt).toLocaleString()+' • v'+t.version:'No timetable downloaded yet'}</Sub><View style={{flexDirection:'row',gap:8,marginTop:14,flexWrap:'wrap'}}><Button title="Change selection" secondary onPress={()=>{setBranch(selection.branch);setSem(String(selection.semester));setSection(selection.section);setPicker(true);}}/><Button title={query.isFetching?'Syncing…':'Refresh timetable'} secondary disabled={offline||guest||query.isFetching} onPress={()=>void query.refetch()}/></View></Card>{status.next&&<Card><Text style={{color:p.blue,fontSize:13,fontWeight:'700'}}>Next: {status.next.subject} in {+status.next.start.slice(0,2)*60+(+status.next.start.slice(3))-status.minute} minutes</Text></Card>}<Choices items={['Daily','Weekly']} value={weekly?'Weekly':'Daily'} set={v=>setWeekly(v==='Weekly')}/>{!weekly&&<Choices items={['Mon','Tue','Wed','Thu','Fri','Sat']} value={['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day]} set={v=>setDay(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(v))}/>}
@@ -149,8 +149,17 @@ function Root(){
    if(!DEMO&&off&&saved)openOffline();else try{setUser(await api.restore());}catch(e){if(saved)openOffline();else setError(e instanceof Error?e.message:'Unable to connect.');}
   }finally{setLoading(false);}
  }
- useEffect(()=>{void boot();return NetInfo.addEventListener(s=>{const off=disconnected(s);setOffline(off);if(!off)void client.invalidateQueries();});},[]);
- useEffect(()=>{if(!offline&&guest&&!DEMO)void session.read().then(s=>{if(s)void api.restore().then(u=>{if(u){setUser(u);setGuest(false);}}).catch(()=>{});});},[offline,guest]);
+ useEffect(()=>{
+  void boot();
+  const unsubscribe=NetInfo.addEventListener(s=>{const off=disconnected(s);setOffline(off);if(!off)void client.invalidateQueries();});
+  if(Platform.OS==='web'){
+   const changed=()=>{const off=!navigator.onLine;setOffline(off);if(!off)void client.invalidateQueries();};
+   window.addEventListener('online',changed);window.addEventListener('offline',changed);
+   return()=>{unsubscribe();window.removeEventListener('online',changed);window.removeEventListener('offline',changed);};
+  }
+  return unsubscribe;
+ },[]);
+ useEffect(()=>{if(!offline&&guest)void api.restore().then(u=>{if(u){setUser(u);setGuest(false);}}).catch(()=>{});},[offline,guest]);
  useEffect(()=>{if(snapshot.data&&user){const u=snapshot.data.users.find(u=>u.id===user.id);if(u)setUser(u);}},[snapshot.data]);
  useEffect(()=>{if(Platform.OS==='web'&&'serviceWorker' in navigator){const base=(process.env.EXPO_PUBLIC_BASE_PATH||'').replace(/\/native$/,'');void navigator.serviceWorker.register(base+'/sw.js').catch(()=>{});}},[]);
  const open=(link:string)=>{if(link.startsWith('/timetable')){if(nav.isReady())nav.navigate('Timetable');}else setDetail(link);};

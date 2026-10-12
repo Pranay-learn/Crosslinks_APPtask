@@ -84,6 +84,8 @@ Use **Student demo** or **Admin demo**. Google sign-in is simulated only in this
 
 ## Validation
 
+See [current verification boundaries](docs/VERIFICATION.md).
+
 ```sh
 npm run typecheck
 npm run lint

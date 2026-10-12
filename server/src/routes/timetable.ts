@@ -50,20 +50,18 @@ export function timetableRoutes(db: PrismaClient) {
       ),
     });
   });
-  router.delete("/:id", requireAdmin, async (req, res) => {
-    const recordId = id(req);
-    const viewer = authenticated(req).user;
-    await db.$transaction([
-      db.timetableEntry.delete({ where: { id: recordId } }),
-      db.auditLog.create({
-        data: {
-          actorId: viewer.id,
-          action: "timetable.delete",
-          targetId: recordId,
-        },
-      }),
-    ]);
-    res.json({ data: { id: recordId, deleted: true } });
+  router.delete("/:id", requireAdmin, async (req,res)=>{
+    const recordId=id(req),actorId=authenticated(req).user.id;
+    await db.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(672886144)`;
+      const entry=await tx.timetableEntry.findUnique({where:{id:recordId}});
+      if(!entry)throw new HttpError(404,"Timetable entry not found.");
+      await tx.timetableEntry.delete({where:{id:recordId}});
+      await tx.auditLog.create({data:{actorId,action:"timetable.delete",targetId:recordId}});
+      const recipients=await tx.user.findMany({where:{status:"ACTIVE",branch:entry.branch,semester:entry.semester,section:entry.section},select:{id:true}});
+      await tx.notification.createMany({data:recipients.map(u=>({userId:u.id,text:"Your timetable was updated. A class was removed.",link:"/timetable"}))});
+    });
+    res.json({data:{id:recordId,deleted:true}});
   });
   return router;
 }

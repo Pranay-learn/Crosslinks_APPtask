@@ -54,6 +54,12 @@ describe.skipIf(!url)('Native mobile secure API contracts',()=>{
   await request(app).patch('/api/timetable/'+timetableId).set(headers(true)).send({cancelled:true}).expect(200);
   const second=(await request(app).get(path).set(headers())).body.data;expect(second.version).toBe(2);expect(second.entries[0].cancelled).toBe(true);
  });
+ it('synchronizes an empty version and queues an update when the last class is deleted',async()=>{
+  await request(app).delete('/api/timetable/'+timetableId).set(headers(true)).expect(200);
+  const current=(await request(app).get('/api/mobile/timetable/sync?branch='+prefix+'&semester=5&section=A').set(headers()).expect(200)).body.data;
+  expect(current.version).toBe(3);expect(current.entries).toEqual([]);
+  expect(await db!.notification.count({where:{userId,link:'/timetable',text:{contains:'removed'}}})).toBe(1);
+ });
  it('persists reports, hides reporter identity, and permits only admin resolution',async()=>{
   await request(app).post('/api/mobile/reports').set(headers()).send({targetId:discussionId,type:'discussion',reason:'A meaningful example report'}).expect(201);
   const rows=(await request(app).get('/api/mobile/admin/reports').set(headers(true))).body.data;
